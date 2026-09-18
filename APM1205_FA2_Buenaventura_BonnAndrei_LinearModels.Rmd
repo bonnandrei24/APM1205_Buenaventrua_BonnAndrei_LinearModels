@@ -1,0 +1,214 @@
+---
+title: "Linear Models FA2"
+author: "Bonn Andrei M. Buenaventura"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+# Setting echo = FALSE ensures that your R code chunks are NOT rendered in the final output document. 
+# R will only render your text, your plots, and the calculated numerical results.
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+
+# Load data globally to ensure stability across chunks
+raw_data <- read.csv("Advertising.csv")
+advertising <- data.frame(
+  TV = raw_data[[grep("tv", tolower(names(raw_data)))[1]]],
+  Sales = raw_data[[grep("sales", tolower(names(raw_data)))[1]]]
+)
+```
+
+## PART 1 - Understanding the Dataset
+
+**A. Identify the variables**
+
+* Predictor variable X: TV advertising budget
+* Response variable Y: Product Sales
+
+**B. Describe the variables**
+
+* `TV` measures the television advertising budget, expressed in thousands of dollars.
+* `Sales` measures the volume of product sales, expressed in thousands of units.
+
+**C. Research question**
+
+* Can product sales be predicted from TV advertising expenditure?
+
+---
+
+## PART 2 - Exploratory Data Analysis
+
+**A. Create a scatterplot**
+
+```{r}
+plot(advertising$TV, 
+     advertising$Sales,
+     main = "Sales vs. TV Advertising",
+     xlab = "TV Advertising Budget ($000)",
+     ylab = "Sales (000 units)",
+     pch = 19,
+     col = "steelblue")
+```
+
+**B. Interpret the scatterplot**
+
+The scatterplot displays a moderate-to-strong positive association between TV advertising expenditure and product sales. The relationship appears approximately linear, indicating that higher investments in TV advertising generally correspond to higher sales figures. While there is noticeable variance around the trend, the clear directional relationship confirms that the TV advertising budget is a potentially useful predictor for Sales.
+
+---
+
+## PART 3 - Simple Linear Regression Model
+
+**A. Fit the model in R**
+
+```{r}
+model <- lm(Sales ~ TV, data = advertising)
+summary(model)
+```
+
+**B. Report the coefficients**
+
+```{r}
+coef(model)
+```
+
+* Intercept (A): 7.0326
+* Slope (B): 0.0475
+
+**C. Write the regression equation**
+
+Sales = 7.0326 + 0.0475(TV)
+
+**D. Interpret the slope and show computation**
+
+To find the least-squares coefficients that minimize the sum of squared residuals, we solve the normal equations. The slope $B$ and intercept $A$ are calculated using the following formulas:
+
+$$B = \frac{\sum (X_i - \bar{X})(Y_i - \bar{Y})}{\sum (X_i - \bar{X})^2}$$
+
+$$A = \bar{Y} - B\bar{X}$$
+
+Applying this to our dataset yields $B = 0.0475$. For every additional $1,000 spent on TV advertising, predicted product sales increase by approximately 47.5 units, on average. Because this is a simple regression, the slope gives the marginal relationship between the response and a single explanatory variable, effectively ignoring the potential influence of other variables in the dataset.
+
+---
+
+## PART 4 - Least-Squares and Residual Analysis
+
+**A. Obtain fitted values and residuals**
+
+```{r}
+advertising$Predicted_Sales <- fitted(model)
+advertising$Residual <- residuals(model)
+```
+
+**B. Show the first 10 observations**
+
+```{r}
+head(advertising, 10)
+```
+
+**C. Interpret one residual and show computation**
+
+The residual $E_i$ represents the signed vertical distance between the actual observed data point and the regression line, computed as:
+
+$$E_i = Y_i - \hat{Y}_i$$
+
+Looking at the first observation, the actual product sales achieved were 22.1 (22,100 units). Based on a TV budget of 230.1, the least-squares model predicted sales of 17.97. 
+
+$$E_1 = 22.1 - 17.97 = 4.13$$
+
+The positive residual of 4.13 means the actual sales were 4.13 thousand units (4,130 units) higher than predicted. The least-squares regression line was derived specifically to minimize the sum of these squared residuals over all observations.
+
+---
+
+## PART 5 - Residual Plot
+
+```{r}
+plot(model, 
+     which = 1, 
+     main = "Residuals vs. Fitted Values")
+```
+
+**Residual Plot Assessment**
+
+The residuals are generally centered around the zero line, and the vertical spread is reasonably consistent across the fitted values, satisfying the constant variance assumption. There is a slight "U-shape" visible (indicating mild non-linearity), but the overall random scatter suggests that a simple linear model is an appropriate baseline representation of the relationship.
+
+---
+
+## PART 6 - Residual Standard Error
+
+```{r}
+summary(model)$sigma
+```
+
+**Interpretation and Computation**
+
+The residual standard error ($SE$) is 3.259. To determine how closely the least-squares line fits the scatter of points, we examine this standard deviation of the residuals. It is calculated using $n-2$ degrees of freedom in the denominator:
+
+$$SE = \sqrt{\frac{\sum E_i^2}{n - 2}}$$
+
+This metric quantifies the average prediction error. It means that when using TV advertising to predict sales, our estimates will typically be off by approximately 3.259 thousand units (or 3,259 units) on average.
+
+---
+
+## PART 7 - Sums of Squares
+
+```{r}
+y <- advertising$Sales
+yhat <- fitted(model)
+
+TSS <- sum((y - mean(y))^2)
+RSS <- sum((y - yhat)^2)
+RegSS <- TSS - RSS
+
+# Display values
+TSS
+RSS
+RegSS
+RegSS + RSS
+```
+
+**Verification and Formulas**
+
+The analysis of variance mathematically decomposes the total variation of the response variable into explained and unexplained components. The formulas used are:
+
+* Total Sum of Squares (TSS): $TSS = \sum(Y_i - \bar{Y})^2$
+* Residual Sum of Squares (RSS): $RSS = \sum(Y_i - \hat{Y}_i)^2$
+* Regression Sum of Squares (RegSS): $RegSS = \sum(\hat{Y}_i - \bar{Y})^2$
+
+As shown in the output, $RegSS + RSS = 3314.618 + 2102.531 = 5417.149$. This perfectly equals the Total Sum of Squares (TSS), mathematically verifying the $TSS = RegSS + RSS$ decomposition rule.
+
+---
+
+## PART 8 - Correlation and R-squared
+
+```{r}
+# Correlation
+r <- cor(advertising$TV, advertising$Sales)
+r
+
+# R-squared
+r_squared <- r^2
+r_squared
+
+# Verify with summary
+summary(model)$r.squared
+```
+
+**Interpretation and Computation**
+
+The positive correlation coefficient ($r = 0.7822$) confirms a strong, positive linear association between TV advertising and Sales. 
+
+The $r^2$ value of 0.6119 represents the proportional reduction in squared error, computed directly from our Sums of Squares:
+
+$$r^2 = \frac{RegSS}{TSS} = \frac{3314.618}{5417.149} = 0.6119$$
+
+This indicates that approximately 61.2% of the total variation in Sales is successfully captured by its linear regression on TV advertising.
+
+---
+
+## PART 9 - Overall Conclusion
+
+Yes, product sales can be successfully predicted from TV advertising expenditure. The exploratory scatterplot and strong correlation coefficient ($r = 0.7822$) exhibit a definitive positive linear association. Fitting the least-squares regression yields the equation $\widehat{\text{Sales}} = 7.0326 + 0.0475(\text{TV})$, confirming that every \$1,000 allocated to the TV budget increases expected product sales by roughly 47.5 units on average. This single predictor successfully captures 61.2% of the total variance in sales ($r^2 = 0.6119$).
+
+However, it is important to remember that statistical models of the type considered in this context are grossly simplified descriptions of complex social reality. Because this is nonexperimental research, we must be cautious about literal causal inference. Other omitted variables must be considered relevant if they strictly satisfy two conditions: they directly influence the response, and they are related to the explanatory variable. These variables could be acting as common prior causes that influence the response variable, and must be carefully considered.
